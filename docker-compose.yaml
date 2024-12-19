@@ -1,0 +1,138 @@
+services:
+  crowdsec:
+    image: crowdsecurity/crowdsec
+    container_name: crowdsec
+    environment:
+      PGID: "1000"
+      COLLECTIONS: "crowdsecurity/traefik crowdsecurity/http-cve"
+    expose:
+      - "8080"
+    volumes:
+      - /var/log/crowdsec:/var/log/crowdsec:ro
+      - /opt/crowdsec-db:/var/lib/crowdsec/data
+      - /var/log/auth.log:/var/log/auth.log:ro
+      - /opt/crowdsec:/etc/crowdsec
+      - "./monitoring/traefik/:/var/log/traefik"
+    restart: unless-stopped
+    labels:
+      - traefik.enable=false
+    networks:
+      - proxy
+
+  traefik:
+    image: "traefik:v3.2"
+    container_name: "traefik"
+    command:
+      - "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entryPoints.web.address=:80"
+      - "--entryPoints.websecure.address=:443"
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.email=postmaster@example.com"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+      - --experimental.plugins.crowdsec-bouncer.modulename=github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
+      - --experimental.plugins.crowdsec-bouncer.version=v1.2.1
+    ports:
+      - "80:80"
+      - "8080:8080"
+      - "443:443"
+    volumes:
+      - "./monitoring/letsencrypt:/letsencrypt"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./monitoring/traefik/:/var/log/traefik"
+    networks:
+      - proxy
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    volumes:
+      - "./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml"  
+      - prometheus_data:/prometheus
+    command:
+      - '--web.enable-lifecycle'
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    ports:
+      - "9090:9090"
+    networks:
+      - monitoring
+    labels:
+      - traefik.enable=true
+    links: 
+      - node-exporter:node-exporter
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    volumes:
+      - grafana_data:/var/lib/grafana
+    labels:
+      - traefik.enable=true
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+    ports:
+      - "9100:9100"
+    networks:
+      - monitoring
+
+  app1:
+    restart: always
+    image: "nginx:alpine"
+    container_name: "app1"
+    volumes:
+      - "./serveur/app1:/usr/share/nginx/html/app1"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.app1.rule=Host(`31.207.34.243`) && PathPrefix(`/app1`)"
+      - "traefik.http.routers.app1.entrypoints=websecure"
+      - "traefik.http.routers.app1.tls.certresolver=myresolver"
+    ports:
+      - "8081:80"
+    networks:
+      - proxy
+
+  app2:
+    restart: always
+    image: "nginx:alpine"
+    container_name: "app2"
+    volumes:
+      - "./serveur/app2:/usr/share/nginx/html/app2"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.app2.rule=Host(`31.207.34.243`) && PathPrefix(`/app2`)"
+      - "traefik.http.routers.app2.entrypoints=websecure"
+      - "traefik.http.routers.app2.tls.certresolver=myresolver"
+    ports:
+      - "8082:80"
+    networks:
+      - proxy
+
+volumes:
+  prometheus_data: {}
+  grafana_data: {}
+
+networks:
+  monitoring:
+    driver: bridge
+  proxy:
+    external: true
