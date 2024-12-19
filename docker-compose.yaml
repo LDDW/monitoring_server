@@ -64,6 +64,11 @@ services:
       - monitoring
     labels:
       - traefik.enable=true
+      #Define midleware
+      - "traefik.http.routers.prometheus.middlewares=crowdsec-prometheus@docker"
+      ## Middleware configuration
+      - "traefik.http.middlewares.crowdsec-prometheus.plugin.crowdsec-bouncer.enabled=true"
+      - "traefik.http.middlewares.crowdsec-prometheus.plugin.crowdsec-bouncer.crowdseclapikey=${CROWDSEC_BOUNCER_API_KEY}"
     links: 
       - node-exporter:node-exporter
 
@@ -77,6 +82,11 @@ services:
       - grafana_data:/var/lib/grafana
     labels:
       - traefik.enable=true
+      #Define midleware
+      - "traefik.http.routers.grafana.middlewares=crowdsec-grafana@docker"
+      ## Middleware configuration
+      - "traefik.http.middlewares.crowdsec-grafana.plugin.crowdsec-bouncer.enabled=true"
+      - "traefik.http.middlewares.crowdsec-grafana.plugin.crowdsec-bouncer.crowdseclapikey=${CROWDSEC_BOUNCER_API_KEY}"
 
   node-exporter:
     image: prom/node-exporter:latest
@@ -106,10 +116,16 @@ services:
       - "traefik.http.routers.app1.rule=Host(`31.207.34.243`) && PathPrefix(`/app1`)"
       - "traefik.http.routers.app1.entrypoints=websecure"
       - "traefik.http.routers.app1.tls.certresolver=myresolver"
+      #Define midleware
+      - "traefik.http.routers.app1.middlewares=crowdsec-app1@docker"
+      ## Middleware configuration
+      - "traefik.http.middlewares.crowdsec-app1.plugin.crowdsec-bouncer.enabled=true"
+      - "traefik.http.middlewares.crowdsec-app1.plugin.crowdsec-bouncer.crowdseclapikey=${CROWDSEC_BOUNCER_API_KEY}"
     ports:
       - "8081:80"
     networks:
       - proxy
+    
 
   app2:
     restart: always
@@ -122,6 +138,11 @@ services:
       - "traefik.http.routers.app2.rule=Host(`31.207.34.243`) && PathPrefix(`/app2`)"
       - "traefik.http.routers.app2.entrypoints=websecure"
       - "traefik.http.routers.app2.tls.certresolver=myresolver"
+      #Define midleware
+      - "traefik.http.routers.app2.middlewares=crowdsec-app2@docker"
+      ## Middleware configuration
+      - "traefik.http.middlewares.crowdsec-app2.plugin.crowdsec-bouncer.enabled=true"
+      - "traefik.http.middlewares.crowdsec-app2.plugin.crowdsec-bouncer.crowdseclapikey=${CROWDSEC_BOUNCER_API_KEY}"
     ports:
       - "8082:80"
     networks:
