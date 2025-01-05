@@ -1,0 +1,43 @@
+- name: Installer les dépendances nécessaires
+  apt:
+    name:
+      - ca-certificates
+      - curl
+    state: latest
+
+- name: Créer le répertoire pour les clés GPG
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+
+- name: Télécharger la clé GPG officielle de Docker
+  ansible.builtin.shell: |
+    curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
+  args:
+    creates: /etc/apt/keyrings/docker.asc
+
+- name: Donner les permissions nécessaires à la clé GPG
+  ansible.builtin.file:
+    path: /etc/apt/keyrings/docker.asc
+    mode: '0644'
+
+- name: Ajouter le dépôt Docker aux sources APT
+  ansible.builtin.shell: |
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian $(. /etc/os-release && echo \"$VERSION_CODENAME\") stable" | tee /etc/apt/sources.list.d/docker.list
+  args:
+    creates: /etc/apt/sources.list.d/docker.list
+
+- name: Mettre à jour le cache APT après ajout du dépôt
+  apt:
+    update_cache: yes
+
+- name: Installer Docker et ses composants
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: latest
