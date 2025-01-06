@@ -12,7 +12,7 @@ services:
       - /opt/crowdsec-db:/var/lib/crowdsec/data
       - /var/log/auth.log:/var/log/auth.log:ro
       - /opt/crowdsec:/etc/crowdsec
-      - "./roles/traefik/:/var/log/traefik"
+      - "./traefik/:/var/log/traefik"
     restart: unless-stopped
     labels:
       - traefik.enable=false
@@ -39,9 +39,9 @@ services:
       - "8080:8080"
       - "443:443"
     volumes:
-      - "./roles/letsencrypt:/letsencrypt"
+      - "./letsencrypt:/letsencrypt"
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
-      - "./roles/traefik/:/var/log/traefik"
+      - "./traefik/:/var/log/traefik"
     networks:
       - proxy
 
@@ -50,7 +50,7 @@ services:
     container_name: prometheus
     restart: unless-stopped
     volumes:
-      - "./roles/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml"  
+      - "./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml"  
       - prometheus_data:/prometheus
     command:
       - '--web.enable-lifecycle'
